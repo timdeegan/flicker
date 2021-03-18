@@ -12,6 +12,9 @@ add_executable(flicker
   main.c
 )
 
+# Some UB-based optimizations are more trouble than they're worth.
+target_compile_options(flicker PRIVATE -fno-strict-aliasing -fwrapv)
+
 # Add the SDK library.
 target_link_libraries(flicker pico_stdlib)
 
