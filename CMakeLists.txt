@@ -10,6 +10,7 @@ pico_sdk_init()
 # Our sources.
 add_executable(flicker
   main.c
+  fft.c
 )
 
 # Some UB-based optimizations are more trouble than they're worth.
