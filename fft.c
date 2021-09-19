@@ -1,5 +1,9 @@
+#include <assert.h>
 #include <string.h>
-#include <pico/float.h>
+
+#include "pico/float.h"
+
+#include "fft.h"
 
 /* Compute the bit-reverse of an N-bit input.
  * TODO: ARM RBIT instruction? */
@@ -28,15 +32,15 @@ static void bit_reverse_shuffle(float *samples, unsigned int N)
     }
 }
 
-/* Unoptimized radix-2 time-decimation FFT.
- * Takes real-valued inputs and produces real & imaginary outputs.
- * All input and output arrays must be 2^N entries long;
- * N must be < 32. */
-void fft(const float *input, float *real, float *imag, unsigned int N)
+/* In-place radix-2 time-decimation FFT.
+ * Input/output array length must must be a power of 2. */
+void fft(float *real, float *imag, unsigned int length)
 {
-    /* TODO: take real/imag as arguments, shuffle both, operate in place. */
-    /* TODO: take length as argument, calculate N? */
-    unsigned int length = 1u << N;
+    /* Length must be 2^N. */
+    assert(length != 0);
+    assert((length & (length - 1)) == 0);
+    /* Find N, which is the bit-width of our array offsets. */
+    unsigned int N = __builtin_ctz(length);
 
     /* The radix-2 FFT is a recursive algorithm that breaks a
      * DFT of 2^N entries into two DFTs each of 2^(N-1) entries.
@@ -52,11 +56,8 @@ void fft(const float *input, float *real, float *imag, unsigned int N)
      * Each recursive step would have split the inputs into even
      * and odd entries.  We can avoid shuffling between stages by
      * shuffling once first. */
-    memcpy(real, input, length * sizeof *imag);
     bit_reverse_shuffle(real, N);
-
-    /* No need to shuffle the imaginary parts, which are all zeros. */
-    memset(imag, 0, length * sizeof *imag);
+    bit_reverse_shuffle(imag, N);
 
     for (unsigned int sub_length = 2; sub_length <= length; sub_length *= 2) {
         /* In this pass we are merging smaller DFTs into DFTs

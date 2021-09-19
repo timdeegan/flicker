@@ -14,23 +14,29 @@ set(FLICKER_SOURCES
 )
 add_executable(flicker ${FLICKER_SOURCES})
 
+set(FFT_TEST_SOURCES
+  fft-test.c
+  fft.c
+)
+add_executable(fft-test ${FFT_TEST_SOURCES})
+
 # Turn up warnings; turn off UB footguns.
-set_source_files_properties(${FLICKER_SOURCES} PROPERTIES COMPILE_OPTIONS
+set(OUR_SOURCES ${FLICKER_SOURCES} ${FFT_TEST_SOURCES})
+set_source_files_properties(${OUR_SOURCES} PROPERTIES COMPILE_OPTIONS
   "-Wall;-Wextra;-Werror;-fanalyzer;-fno-strict-aliasing;-fwrapv"
 )
 
-# Turn warnings up as far as the SDK will stand.
-#set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Werror -Wno-unused-parameter -Wno-sign-compare")
-# Turn off sharp-edged UB-based optimizations.
-#set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-strict-aliasing -fwrapv")
-
 # Add the SDK library.
 target_link_libraries(flicker pico_stdlib)
+target_link_libraries(fft-test pico_stdlib)
 
 # Use the USB console.
 pico_enable_stdio_usb(flicker 1)
+pico_enable_stdio_usb(fft-test 1)
 # ...and don't try to drive UART on GP0/1
 pico_enable_stdio_uart(flicker 0)
+pico_enable_stdio_uart(fft-test 0)
 
 # Build the full set of output files.
 pico_add_extra_outputs(flicker)
+pico_add_extra_outputs(fft-test)
