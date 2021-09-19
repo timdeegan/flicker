@@ -7,7 +7,7 @@
 #include "pico/stdlib.h"
 #include "pico/binary_info.h"
 
-#include "fft.h"
+#include "../fft.h"
 
 /* Like assert() but don't stop the world. */
 static bool failed;
