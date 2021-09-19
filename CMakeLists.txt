@@ -8,13 +8,21 @@ set(CMAKE_CXX_STANDARD 17)
 pico_sdk_init()
 
 # Our sources.
-add_executable(flicker
+set(FLICKER_SOURCES
   main.c
   fft.c
 )
+add_executable(flicker ${FLICKER_SOURCES})
 
-# Some UB-based optimizations are more trouble than they're worth.
-target_compile_options(flicker PRIVATE -fno-strict-aliasing -fwrapv)
+# Turn up warnings; turn off UB footguns.
+set_source_files_properties(${FLICKER_SOURCES} PROPERTIES COMPILE_OPTIONS
+  "-Wall;-Wextra;-Werror;-fanalyzer;-fno-strict-aliasing;-fwrapv"
+)
+
+# Turn warnings up as far as the SDK will stand.
+#set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Werror -Wno-unused-parameter -Wno-sign-compare")
+# Turn off sharp-edged UB-based optimizations.
+#set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-strict-aliasing -fwrapv")
 
 # Add the SDK library.
 target_link_libraries(flicker pico_stdlib)
