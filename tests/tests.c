@@ -8,6 +8,7 @@
 #include "pico/binary_info.h"
 
 #include "../fft.h"
+#include "../sample.h"
 
 /* Like assert() but don't stop the world. */
 static bool failed;
@@ -20,9 +21,9 @@ static bool failed;
 } while (0)
 
 /* Buffers to run FFT tests in. */
-#define MAX_TEST_LENGTH (1u << 12)
-static float real[MAX_TEST_LENGTH];
-static float imag[MAX_TEST_LENGTH];
+#define MAX_FFT_LENGTH (1u << 12)
+static float real[MAX_FFT_LENGTH];
+static float imag[MAX_FFT_LENGTH];
 
 /* Check the results of an FFT are close enough. */
 static bool fft_match(const float *ours,
@@ -63,7 +64,7 @@ static void fft_test(const char *name,
     printf("FFT %s\n", name);
     failed = false;
 
-    REQUIRE(length <= MAX_TEST_LENGTH);
+    REQUIRE(length <= MAX_FFT_LENGTH);
     memcpy(real, real_input, length * sizeof *real);
     memset(imag, 0, length * sizeof *imag);
 
@@ -75,29 +76,62 @@ static void fft_test(const char *name,
     printf("FFT %s: %s\n", name, failed ? "FAILED" : "OK");
 }
 
+/* Buffer for sampling */
+#define SAMPLE_COUNT 10000u
+#define SAMPLE_PIN 26u
+static uint16_t samples[SAMPLE_COUNT];
+
+/* Test ADC sampling. */
+static void sample_test(unsigned int count, float hz, bool print)
+{
+    printf("SAMPLE %d @%fHz\n", count, hz);
+    failed = false;
+
+    memset(samples, 0, count * sizeof *samples);
+    sample(count, hz, samples);
+    for (unsigned int i = 0; i < count; i++) {
+        if (print) {
+            printf("  %3d: 0x%04x\n", i, samples[i]);
+        }
+        /* No errors. */
+        REQUIRE((samples[i] & SAMPLE_ERROR) == 0);
+        /* No blanks. */
+        REQUIRE(samples[i] != 0);
+    }
+
+    printf("SAMPLE %d @%fHz: %s\n", count, hz, failed ? "FAILED" : "OK");
+}
+
 int main(void)
 {
     /* Debugging metadata that gets baked into the binary. */
     bi_decl(bi_program_name("fft-test"));
     bi_decl(bi_program_version_string("0.1"));
     bi_decl(bi_program_description("Unit tests for flicker"));
+    bi_decl(bi_1pin_with_name(SAMPLE_PIN, "ADC sampling pin"));
 
     /* Debugging output will go to the USB console. */
     stdio_init_all();
 
-    /* Prepare to control the onboard LED. */
+    /* Hardware setup. */
     gpio_init(PICO_DEFAULT_LED_PIN);
     gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
+    sample_init(SAMPLE_PIN);
 
     while(1) {
         gpio_put(PICO_DEFAULT_LED_PIN, 1);
         printf("Starting tests.\n");
+
 #include "fft-test-cosine.h"
 #include "fft-test-noise.h"
 #include "fft-test-square.h"
 #include "fft-test-bigsquare.h"
 #include "fft-test-sawtooth.h"
 #include "fft-test-bigsawtooth.h"
+
+        sample_test(10, 1e3, true);
+        sample_test(SAMPLE_COUNT, 500e3, false);
+
         printf("Tests complete.\n\n");
         gpio_put(PICO_DEFAULT_LED_PIN, 0);
         sleep_ms(1000);

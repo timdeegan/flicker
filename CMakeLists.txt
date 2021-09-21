@@ -11,12 +11,14 @@ pico_sdk_init()
 set(FLICKER_SOURCES
   main.c
   fft.c
+  sample.c
 )
 add_executable(flicker ${FLICKER_SOURCES})
 
 set(TEST_SOURCES
   tests/tests.c
   fft.c
+  sample.c
 )
 add_executable(unit-tests ${TEST_SOURCES})
 
@@ -27,8 +29,13 @@ set_source_files_properties(${OUR_SOURCES} PROPERTIES COMPILE_OPTIONS
 )
 
 # Add the SDK library.
-target_link_libraries(flicker pico_stdlib)
-target_link_libraries(unit-tests pico_stdlib)
+set(SDK_LIBS
+  pico_stdlib
+  hardware_adc
+  hardware_dma
+)
+target_link_libraries(flicker ${SDK_LIBS})
+target_link_libraries(unit-tests ${SDK_LIBS})
 
 # Use the USB console.
 pico_enable_stdio_usb(flicker 1)
