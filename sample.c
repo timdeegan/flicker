@@ -1,8 +1,7 @@
-#include <assert.h>
-
 #include "hardware/adc.h"
 #include "hardware/dma.h"
 
+#include "assertions.h"
 #include "sample.h"
 
 /* DMA channel used to carry samples to RAM. */
@@ -13,7 +12,7 @@ static dma_channel_config config;
 void sample_init(unsigned int pin)
 {
     /* Valid ADC pins are 26-29, a.k.a. ADC inputs 0-3. */
-    assert(pin >= 26 && pin <= 29);
+    ASSERT(pin >= 26 && pin <= 29);
     unsigned int input = pin - 26;
 
     /* GPIO pin. */
@@ -46,7 +45,7 @@ void sample(unsigned int count, float hz, uint16_t *dest)
 {
     /* The ADC samples every (1 + clkdiv) 48MHz cycles, on average.
      * Minimum clkdiv is 95 -> 48MHz/96 = 500kHz. */
-    assert(hz <= 500e3);
+    ASSERT(hz <= 500e3);
     float cycles = 48e6/hz;
     adc_set_clkdiv(cycles - 1.0);
 

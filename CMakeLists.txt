@@ -11,6 +11,7 @@ pico_sdk_init()
 set(FLICKER_SOURCES
   main.c
   fft.c
+  graph.c
   sample.c
 )
 add_executable(flicker ${FLICKER_SOURCES})
@@ -18,6 +19,7 @@ add_executable(flicker ${FLICKER_SOURCES})
 set(TEST_SOURCES
   tests/tests.c
   fft.c
+  graph.c
   sample.c
 )
 add_executable(unit-tests ${TEST_SOURCES})

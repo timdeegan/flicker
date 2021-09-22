@@ -5,6 +5,19 @@
 #include "pico/stdlib.h"
 #include "pico/binary_info.h"
 
+/* Assertion failures stop the world and keep logging so
+ * we can connect the serial console to debug.  */
+void assertion_failure(const char *pred, const char *file, int line)
+{
+    while (true) {
+        printf("ASSERTION FAILED at %s line %d: %s\n", file, line, pred);
+        gpio_put(PICO_DEFAULT_LED_PIN, 1);
+        sleep_ms(10);
+        gpio_put(PICO_DEFAULT_LED_PIN, 0);
+        sleep_ms(990);
+    }
+}
+
 int main(void) {
 
     /* Debugging metadata that gets baked into the binary. */

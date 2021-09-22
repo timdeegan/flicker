@@ -1,4 +1,3 @@
-#include <assert.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
@@ -7,18 +6,18 @@
 #include "pico/stdlib.h"
 #include "pico/binary_info.h"
 
+#include "../assertions.h"
 #include "../fft.h"
+#include "../graph.h"
 #include "../sample.h"
 
-/* Like assert() but don't stop the world. */
+/* Assertion failures in testing don't stop the world. */
 static bool failed;
-#define REQUIRE(pred) do {                 \
-    if (!(pred)) {                         \
-        printf("FAIL at %s line %d: %s\n", \
-               __FILE__, __LINE__, #pred); \
-        failed = true;                     \
-    }                                      \
-} while (0)
+void assertion_failure(const char *pred, const char *file, int line)
+{
+    printf(" ** ASSERTION FAILED ** at %s line %d: %s\n", file, line, pred);
+    failed = true;
+}
 
 /* Buffers to run FFT tests in. */
 #define MAX_FFT_LENGTH (1u << 12)
@@ -64,14 +63,14 @@ static void fft_test(const char *name,
     printf("FFT %s\n", name);
     failed = false;
 
-    REQUIRE(length <= MAX_FFT_LENGTH);
+    ASSERT(length <= MAX_FFT_LENGTH);
     memcpy(real, real_input, length * sizeof *real);
     memset(imag, 0, length * sizeof *imag);
 
     fft(real, imag, length);
 
-    REQUIRE(fft_match(real, real_reference, length));
-    REQUIRE(fft_match(imag, imag_reference, length));
+    ASSERT(fft_match(real, real_reference, length));
+    ASSERT(fft_match(imag, imag_reference, length));
 
     printf("FFT %s: %s\n", name, failed ? "FAILED" : "OK");
 }
@@ -94,12 +93,26 @@ static void sample_test(unsigned int count, float hz, bool print)
             printf("  %3d: 0x%04x\n", i, samples[i]);
         }
         /* No errors. */
-        REQUIRE((samples[i] & SAMPLE_ERROR) == 0);
+        ASSERT((samples[i] & SAMPLE_ERROR) == 0);
         /* No blanks. */
-        REQUIRE(samples[i] != 0);
+        ASSERT(samples[i] != 0);
     }
 
     printf("SAMPLE %d @%fHz: %s\n", count, hz, failed ? "FAILED" : "OK");
+}
+
+/* Test plotting. */
+static void graph_test(void)
+{
+    printf("GRAPH\n");
+    failed = false;
+
+    for (unsigned int i = 0; i < 1000; i++) {
+        samples[i] = roundf((sinf(M_TWOPI * i / 500) + 1.0) * 32767);
+    }
+    graph("sin()", samples, 1000);
+
+    printf("GRAPH: %s\n", failed ? "FAILED" : "OK");
 }
 
 int main(void)
@@ -121,6 +134,8 @@ int main(void)
     while(1) {
         gpio_put(PICO_DEFAULT_LED_PIN, 1);
         printf("Starting tests.\n");
+
+        graph_test();
 
 #include "fft-test-cosine.h"
 #include "fft-test-noise.h"

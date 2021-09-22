@@ -1,8 +1,8 @@
-#include <assert.h>
 #include <string.h>
 
 #include "pico/float.h"
 
+#include "assertions.h"
 #include "fft.h"
 
 /* Compute the bit-reverse of an N-bit input.
@@ -37,8 +37,8 @@ static void bit_reverse_shuffle(float *samples, unsigned int N)
 void fft(float *real, float *imag, unsigned int length)
 {
     /* Length must be 2^N. */
-    assert(length != 0);
-    assert((length & (length - 1)) == 0);
+    ASSERT(length != 0);
+    ASSERT((length & (length - 1)) == 0);
     /* Find N, which is the bit-width of our array offsets. */
     unsigned int N = __builtin_ctz(length);
 
