@@ -8,6 +8,7 @@
 #include "pico/stdlib.h"
 #include "pico/binary_info.h"
 
+#include "assertions.h"
 #include "fft.h"
 #include "graph.h"
 #include "sample.h"
@@ -31,10 +32,14 @@
 /* FFT buckets: the FFT produces twice as many but
  * everything above this is just aliasing. */
 #define FREQ_COUNT ((SAMPLE_COUNT / 2u) + 1u)
-static unsigned int bucket(float freq)
+#define HZ_PER_BUCKET ((SAMPLE_RATE / 2) / (FREQ_COUNT - 1))
+static inline unsigned int to_bucket(float hz)
 {
-    float hz_per_bucket = (SAMPLE_RATE / 2) / (FREQ_COUNT - 1);
-    return roundf(freq / hz_per_bucket);
+    return roundf(hz / HZ_PER_BUCKET);
+}
+static inline float to_frequency(int bucket)
+{
+    return HZ_PER_BUCKET * bucket;
 }
 
 /* Raw 12-bit samples from the ADC. */
@@ -105,10 +110,45 @@ static void make_polar(float *real,
     }
 }
 
+/* Find the dominant frequency in the FFT */
+static float peak_frequency(float *magnitudes, unsigned int count)
+{
+    unsigned int i, max_index = 0;
+    float max_val = -1;
+
+    /* Skip the unreliable low frequencies and DC. */
+    for (i = to_bucket(50); i < count; i++) {
+        if (magnitudes[i] > max_val) {
+            max_val = magnitudes[i];
+            max_index = i;
+        }
+    }
+
+    return to_frequency(max_index);
+}
+
+/* Calculate the modulation percentage of these samples. */
+static int mod_percent(uint16_t *samples, unsigned int count)
+{
+    unsigned int max = 0, min = -1;
+
+    for (unsigned int i = 0; i < count; i++)
+    {
+        float s = samples[i];
+        max = (s > max) ? s : max;
+        min = (s < min) ? s : min;
+    }
+
+    /* N.B. *not* (100 * (max - min) / max), as you might expect. */
+    return (int) roundf(100.0 * (max - min) / (max + min));
+}
+
 /* Measure a light source and report on it.
  * Returns false on error. */
 static bool measure(void)
 {
+    float frequency;
+    unsigned int cycle, mod;
 
     /* Collect uint16_t samples in [0, 0xfff]. */
     sample(SAMPLE_COUNT, SAMPLE_RATE, samples);
@@ -121,12 +161,20 @@ static bool measure(void)
     /* TODO here: Windowing. */
     fft(f.real, f.imag, SAMPLE_COUNT);
     make_polar(f.real, f.imag, f.magnitude, f.phase, FREQ_COUNT);
+    frequency = peak_frequency(f.magnitude, FREQ_COUNT);
 
     /* Look at the spectrum, skipping everything < 10Hz */
-    graph_logx("FFT", f.magnitude + bucket(10), FREQ_COUNT - bucket(10));
+    graph_logx(f.magnitude + to_bucket(10), FREQ_COUNT - to_bucket(10));
+    printf("FFT: peak at %fHz\n", frequency);
 
-    /* Expect to see 210Hz PWM, 1248.3 samples/cycle. */
-    graph("Raw samples (9.5ms)", samples + 8000, 2500);
+    /* Look at a couple of cycles of the raw samples. */
+    cycle = SAMPLE_RATE / frequency;
+    ASSERT(cycle < SAMPLE_COUNT / 2);
+    graph(samples + SAMPLE_COUNT / 2 - cycle, cycle * 2);
+    mod = mod_percent(samples + SAMPLE_COUNT / 2 - cycle, cycle * 2);
+    printf("Raw samples: %dms, %d%% flicker.\n",
+           (unsigned int)(2 * cycle / SAMPLE_RATE * 1000),
+           mod);
 
     return true;
 }

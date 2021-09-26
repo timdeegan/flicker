@@ -110,7 +110,7 @@ static void graph_test(void)
     for (unsigned int i = 0; i < 1000; i++) {
         samples[i] = roundf((sinf(M_TWOPI * i / 500) + 1.0) * 32767);
     }
-    graph("sin()", samples, 1000);
+    graph(samples, 1000);
 
     printf("GRAPH: %s\n", failed ? "FAILED" : "OK");
 }

@@ -78,7 +78,7 @@ static void print_frame()
 }
 
 /* Graph 16-bit samples on a linear scale. */
-void graph(const char *name, uint16_t *samples, unsigned int count)
+void graph(uint16_t *samples, unsigned int count)
 {
     unsigned int i, x, y;
     uint16_t max;
@@ -106,11 +106,10 @@ void graph(const char *name, uint16_t *samples, unsigned int count)
     }
 
     print_frame();
-    printf("[ %s ]\n", name);
 }
 
 /* Graph floating-point samples on a log-x/linear-y scale. */
-void graph_logx(const char *name, float *samples, unsigned int count)
+void graph_logx(float *samples, unsigned int count)
 {
     unsigned int i, x, y;
     float max, log_count;
@@ -139,5 +138,4 @@ void graph_logx(const char *name, float *samples, unsigned int count)
     }
 
     print_frame();
-    printf("[ %s ]\n", name);
 }
