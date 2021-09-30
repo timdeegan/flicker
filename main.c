@@ -21,7 +21,7 @@
  * flicker, so we need to sample at least twice as fast.
  * The pico can go to 500kHz but we don't have room to
  * process that much data. */
-#define SAMPLE_RATE 262144.0
+#define SAMPLE_RATE 250000.0
 
 /* Sample count is limited by our FFT implementation.
  * It uses 8 bytes per sample and only works on powers of two,
