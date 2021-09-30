@@ -7,6 +7,7 @@
 #include "pico/binary_info.h"
 
 #include "../assertions.h"
+#include "../dsp.h"
 #include "../fft.h"
 #include "../graph.h"
 #include "../sample.h"
@@ -115,6 +116,29 @@ static void graph_test(void)
     printf("GRAPH: %s\n", failed ? "FAILED" : "OK");
 }
 
+/* Check that the window function looks snesible */
+static void window_test(void)
+{
+    printf("WINDOW\n");
+    failed = false;
+
+    /* Square wave: half high, half low. */
+    for (unsigned int i = 0; i < MAX_FFT_LENGTH; i++) {
+        samples[i] = (i < MAX_FFT_LENGTH / 2) ? 0x100 : 0;
+    }
+    /* Window.  Should end up with a Gaussian curve,
+     * with the second half inverted. */
+    bool ok = window(samples, real, imag, MAX_FFT_LENGTH);
+    ASSERT(ok);
+    /* Back into uint16s for plotting. */
+    for (unsigned int i = 0; i < MAX_FFT_LENGTH; i++) {
+        samples[i] = real[i] + 0x80;
+    }
+    graph(samples, MAX_FFT_LENGTH);
+
+    printf("WINDOW: %s\n", failed ? "FAILED" : "OK");
+}
+
 int main(void)
 {
     /* Debugging metadata that gets baked into the binary. */
@@ -146,6 +170,8 @@ int main(void)
 
         sample_test(10, 1e3, true);
         sample_test(SAMPLE_COUNT, 500e3, false);
+
+        window_test();
 
         printf("Tests complete.\n\n");
         gpio_put(PICO_DEFAULT_LED_PIN, 0);

@@ -9,6 +9,7 @@
 #include "pico/binary_info.h"
 
 #include "assertions.h"
+#include "dsp.h"
 #include "fft.h"
 #include "graph.h"
 #include "sample.h"
@@ -73,60 +74,6 @@ void assertion_failure(const char *pred, const char *file, int line)
     }
 }
 
-/* Convert uint16_t samples to complex floats.
- * Returns false on error. */
-static bool make_complex(uint16_t *samples,
-                         float *real,
-                         float *imag,
-                         unsigned int count)
-{
-    unsigned int i;
-
-    for (i = 0; i < count; i++) {
-        uint16_t s = samples[i];
-        if (s & SAMPLE_ERROR) {
-            printf("Sampling error at %d/%d: 0x%4.4x\n",
-                i, SAMPLE_COUNT, s);
-            return false;
-        }
-        real[i] = (float)s;
-        imag[i] = 0.0;
-    }
-    return true;
-}
-
-/* Convert FFT results from cartesian to polar coordinates. */
-static void make_polar(float *real,
-                       float *imag,
-                       float *abs,
-                       float *angle,
-                       unsigned int count)
-{
-    unsigned int n;
-    for (n = 0; n < count; n++) {
-        double r = real[n], i = imag[n];
-        abs[n] = sqrt(r * r + i * i);
-        angle[n] = atan2(i, r);
-    }
-}
-
-/* Find the dominant frequency in the FFT */
-static float peak_frequency(float *magnitudes, unsigned int count)
-{
-    unsigned int i, max_index = 0;
-    float max_val = -1;
-
-    /* Skip the unreliable low frequencies and DC. */
-    for (i = to_bucket(50); i < count; i++) {
-        if (magnitudes[i] > max_val) {
-            max_val = magnitudes[i];
-            max_index = i;
-        }
-    }
-
-    return to_frequency(max_index);
-}
-
 /* Calculate the modulation percentage of these samples. */
 static int mod_percent(uint16_t *samples, unsigned int count)
 {
@@ -153,18 +100,16 @@ static bool measure(void)
     /* Collect uint16_t samples in [0, 0xfff]. */
     sample(SAMPLE_COUNT, SAMPLE_RATE, samples);
 
-    /* Convert those to floating point. */
-    if (!make_complex(samples, f.real, f.imag, SAMPLE_COUNT)) {
+    /* Find the spectrum and the peak frequency. */
+    if (!window(samples, f.real, f.imag, SAMPLE_COUNT)) {
         return false;
     }
-
-    /* TODO here: Windowing. */
     fft(f.real, f.imag, SAMPLE_COUNT);
     make_polar(f.real, f.imag, f.magnitude, f.phase, FREQ_COUNT);
-    frequency = peak_frequency(f.magnitude, FREQ_COUNT);
+    frequency = to_frequency(peak(f.magnitude, FREQ_COUNT));
 
-    /* Look at the spectrum, skipping everything < 10Hz */
-    graph_logx(f.magnitude + to_bucket(10), FREQ_COUNT - to_bucket(10));
+    /* Look at the spectrum. */
+    graph_logx(f.magnitude, FREQ_COUNT);
     printf("FFT: peak at %fHz\n", frequency);
 
     /* Look at a couple of cycles of the raw samples. */
