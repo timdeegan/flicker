@@ -44,10 +44,16 @@ void sample_init(unsigned int pin)
 void sample(unsigned int count, float hz, uint16_t *dest)
 {
     /* The ADC samples every (1 + clkdiv) 48MHz cycles, on average.
-     * Minimum clkdiv is 95 -> 48MHz/96 = 500kHz. */
+     * Minimum period is 96 cycles = 500kHz. */
     ASSERT(hz <= 500e3);
-    float cycles = 48e6/hz;
-    adc_set_clkdiv(cycles - 1.0);
+    float divider = 48e6/hz - 1.0;
+    if (divider < 96.0) {
+        /* The SDK says "any *period* less than that will be clamped to 96."
+         * but in practice setting the *divider* to < 96 does odd things,
+         * In particular 95 and 94 give 250kHz, not 500kHz.  Avoid that. */
+        divider = 0;
+    }
+    adc_set_clkdiv(divider);
 
     /* Clear old state, just in case. */
     adc_run(false);
