@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "assertions.h"
 #include "dsp.h"
 #include "sample.h"
 
@@ -11,9 +12,11 @@
 float peak(float *magnitudes, unsigned int count)
 {
     unsigned int i, max_index = 0;
-    float max_val = -1;
+    float high, middle, low, adjust, max_val = -1;
 
-    /* Skip bucket 0 (DC), though it should be 0 anyway. */
+    /* Find the bucket with the highest magnitude.
+     * Skip bucket 0 (DC), though it should be 0 anyway
+     * because we filtered out DC during windowing. */
     for (i = 1; i < count; i++) {
         if (magnitudes[i] > max_val) {
             max_val = magnitudes[i];
@@ -21,7 +24,24 @@ float peak(float *magnitudes, unsigned int count)
         }
     }
 
-    return max_index;
+    ASSERT(max_index > 0);
+    if (max_index == count - 1) {
+        return max_index;
+    }
+
+    /* That gets us a first guess at the frequency, but only to the
+     * nearest bucket.  Fit a Gaussian curve to the three magnitudes
+     * around that point and pick the highest point on that curve.
+     * 
+     * See M. Gasior and J. L. Gonzalez, "Improving FFT Frequency
+     * Measurement Resolution by Parabolic and Gaussian Spectrum
+     * Interpolation", AIP Conference Proceedings 732, 276-285 (2004). */
+    high = magnitudes[max_index + 1];
+    middle = magnitudes[max_index];
+    low = magnitudes[max_index - 1];
+    adjust = log(high/low)/(2.0 * log((middle * middle)/(high * low)));
+
+    return max_index + adjust;
 }
 
 /* Convert uint16_t samples to complex floats, windowed for FFT'ing.
@@ -45,7 +65,7 @@ bool window(const uint16_t *samples,
      * the sample doesn't wrap around at the edges, and the FFT
      * assumes that it does.
      *
-     * Our window function is "Gaussian, r = 8" from Gasior and Gonzales.
+     * Our window function is "Gaussian, r = 8" from Gasior and Gonzalez.
      * it's relatively expensive, but we're not optimizing yet, and
      * it lets us use Gaussian interpolation on the results.
      *

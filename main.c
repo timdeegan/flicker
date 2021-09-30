@@ -38,7 +38,7 @@ static inline unsigned int to_bucket(float hz)
 {
     return roundf(hz / HZ_PER_BUCKET);
 }
-static inline float to_frequency(int bucket)
+static inline float to_frequency(float bucket)
 {
     return HZ_PER_BUCKET * bucket;
 }
@@ -114,7 +114,9 @@ static bool measure(void)
 
     /* Look at a couple of cycles of the raw samples. */
     cycle = SAMPLE_RATE / frequency;
-    ASSERT(cycle < SAMPLE_COUNT / 2);
+    if (cycle > SAMPLE_COUNT / 2) {
+        cycle = SAMPLE_COUNT / 2;
+    }
     graph(samples + SAMPLE_COUNT / 2 - cycle, cycle * 2);
     mod = mod_percent(samples + SAMPLE_COUNT / 2 - cycle, cycle * 2);
     printf("Raw samples: %dms, %d%% flicker.\n",
