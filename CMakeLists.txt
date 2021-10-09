@@ -10,26 +10,31 @@ pico_sdk_init()
 # Our sources.
 set(FLICKER_SOURCES
   main.c
+  agc.c
   dsp.c
   fft.c
   graph.c
   sample.c
 )
 add_executable(flicker ${FLICKER_SOURCES})
+pico_generate_pio_header(flicker ${CMAKE_CURRENT_LIST_DIR}/ad5220.pio)
 
 set(TEST_SOURCES
   tests/tests.c
+  agc.c
   dsp.c
   fft.c
   graph.c
   sample.c
 )
 add_executable(unit-tests ${TEST_SOURCES})
+pico_generate_pio_header(unit-tests ${CMAKE_CURRENT_LIST_DIR}/ad5220.pio)
 
-# Turn up warnings; turn off UB footguns.
+# Turn on warnings; turn off UB footguns.
+# Disable warnings that fire on SDK header files.
 set(OUR_SOURCES ${FLICKER_SOURCES} ${TEST_SOURCES})
 set_source_files_properties(${OUR_SOURCES} PROPERTIES COMPILE_OPTIONS
-  "-Wall;-Wextra;-Werror;-fanalyzer;-fno-strict-aliasing;-fwrapv"
+  "-Wall;-Wextra;-Werror;-Wno-type-limits;-fanalyzer;-fno-strict-aliasing;-fwrapv"
 )
 
 # Add the SDK library.
@@ -37,6 +42,7 @@ set(SDK_LIBS
   pico_stdlib
   hardware_adc
   hardware_dma
+  hardware_pio
 )
 target_link_libraries(flicker ${SDK_LIBS})
 target_link_libraries(unit-tests ${SDK_LIBS})

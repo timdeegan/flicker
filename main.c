@@ -12,10 +12,8 @@
 #include "dsp.h"
 #include "fft.h"
 #include "graph.h"
+#include "pins.h"
 #include "sample.h"
-
-/* Phototransistor sampled here. */
-#define PT_PIN 26
 
 /* The phototransistor is (just) able to pick up 110kHz
  * flicker, so we need to sample at least twice as fast.
@@ -132,7 +130,6 @@ int main(void)
     bi_decl(bi_program_name("flicker"));
     bi_decl(bi_program_version_string("0.1"));
     bi_decl(bi_program_description("Lighting flicker meter"));
-    bi_decl(bi_1pin_with_name(PT_PIN, "Phototransistor sampling pin"));
 
     /* Debugging output will go to the USB console. */
     stdio_init_all();

@@ -1,0 +1,68 @@
+; The AD5220B10 potentiometer goes from 0 to 10k ohms in 128 steps.
+; It moves by one step on every falling edge of the clock line.
+; The clock can be up to 20MHz square (25ns low, 25ns high),
+; and the direction pin must change >=10ns before clock edge.
+; The Pico's system clock is 125MHz (8ns/cycle); we won't
+; mess around with dividers because we want a clean clock.
+
+.program ad5220
+.side_set 1
+  out pins, 1  side 1     ; Load direction pin; 2 cycles until clock falls.
+  out x, 7     side 1     ; Load repeats.
+loop:
+  nop          side 0 [3] ; Set clock low; 4 cycles until clock rises.
+  nop          side 1 [2] ; Set clock high; 4 cycles until clock falls.
+  jmp x-- loop side 1     ; Repeat clock pattern another @repeats times.
+
+% c-sdk {
+
+/* Load the AD5220 program and configure its pins. */
+static inline void ad5220_program_init(PIO pio,
+                                       uint sm,
+                                       uint offset,
+                                       uint dir_pin,
+                                       uint clock_pin)
+{
+    pio_sm_config conf = ad5220_program_get_default_config(offset);
+
+    /* Direction pin is driven with the OUT operation. */
+    pio_gpio_init(pio, dir_pin);
+    pio_sm_set_consecutive_pindirs(pio, sm, dir_pin, 1, true);
+    sm_config_set_out_pins(&conf, dir_pin, 1);
+
+    /* Clock pin is driven as a side pin. */
+    pio_gpio_init(pio, clock_pin);
+    pio_sm_set_consecutive_pindirs(pio, sm, clock_pin, 1, true);
+    sm_config_set_sideset_pins(&conf, clock_pin);
+
+    /* Program one word at a time, shifting out MSB first. */
+    sm_config_set_out_shift(&conf, false, true, 8);
+
+    /* Start the state machine. */
+    pio_sm_init(pio, sm, offset, &conf);
+    pio_sm_set_enabled(pio, sm, true);
+}
+
+/* Move the AD25220 wiper up or down by a number of steps. */
+static inline void ad5220_program_run(PIO pio, uint sm, int count)
+{
+    uint32_t command;
+    ASSERT(count > -128);
+    ASSERT(count < 128);
+
+    /* Command: 1 bit up/~down, 7 bits repeats, low 24 bits ignored. */
+    if (count > 0) {
+        command = (1u << 31) | ((count - 1) << 24);
+    } else if (count < 0) {
+        command = (-count - 1) << 24;
+    } else {
+        return;
+    }
+
+    pio_sm_put_blocking(pio, sm, command);
+    while (!pio_sm_is_tx_fifo_empty(pio, sm)) {
+        /* Busy-wait. */
+    }
+}
+
+%}

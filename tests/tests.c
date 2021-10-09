@@ -7,9 +7,11 @@
 #include "pico/binary_info.h"
 
 #include "../assertions.h"
+#include "../agc.h"
 #include "../dsp.h"
 #include "../fft.h"
 #include "../graph.h"
+#include "../pins.h"
 #include "../sample.h"
 
 /* Assertion failures in testing don't stop the world. */
@@ -139,13 +141,30 @@ static void window_test(void)
     printf("WINDOW: %s\n", failed ? "FAILED" : "OK");
 }
 
+static void agc_test(void)
+{
+    printf("AGC\n");
+    failed = false;
+
+    /* Not a lot to see from out here, but check that nothing crashes,
+     * and it gives us something to look for on the oscilloscope. */
+    agc_reset();
+    sleep_ms(1000);
+    agc_set_level(120);
+    sleep_ms(50);
+    agc_set_level(121);
+    sleep_ms(50);
+    agc_set_level(120);
+
+    printf("AGC: %s\n", failed ? "FAILED" : "OK");
+}
+
 int main(void)
 {
     /* Debugging metadata that gets baked into the binary. */
-    bi_decl(bi_program_name("fft-test"));
+    bi_decl(bi_program_name("unit-tests"));
     bi_decl(bi_program_version_string("0.1"));
     bi_decl(bi_program_description("Unit tests for flicker"));
-    bi_decl(bi_1pin_with_name(SAMPLE_PIN, "ADC sampling pin"));
 
     /* Debugging output will go to the USB console. */
     stdio_init_all();
@@ -154,6 +173,7 @@ int main(void)
     gpio_init(PICO_DEFAULT_LED_PIN);
     gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
     sample_init(SAMPLE_PIN);
+    agc_init(AD5220_DIR_PIN, AD5220_CLOCK_PIN);
 
     while(1) {
         gpio_put(PICO_DEFAULT_LED_PIN, 1);
@@ -172,6 +192,8 @@ int main(void)
         sample_test(SAMPLE_COUNT, 500e3, false);
 
         window_test();
+
+        agc_test();
 
         printf("Tests complete.\n\n");
         gpio_put(PICO_DEFAULT_LED_PIN, 0);
