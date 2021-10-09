@@ -80,7 +80,6 @@ static void fft_test(const char *name,
 
 /* Buffer for sampling */
 #define SAMPLE_COUNT 10000u
-#define SAMPLE_PIN 26u
 static uint16_t samples[SAMPLE_COUNT];
 
 /* Test ADC sampling. */
@@ -118,7 +117,7 @@ static void graph_test(void)
     printf("GRAPH: %s\n", failed ? "FAILED" : "OK");
 }
 
-/* Check that the window function looks snesible */
+/* Check that the window function looks sensible */
 static void window_test(void)
 {
     printf("WINDOW\n");
@@ -141,20 +140,67 @@ static void window_test(void)
     printf("WINDOW: %s\n", failed ? "FAILED" : "OK");
 }
 
+/* Measure the average level over 20ms to smooth out the
+ * most common 100Hz ripple. */
+static float average_sample(void)
+{
+    unsigned int i, total = 0, count = 5000;
+    ASSERT(count < SAMPLE_COUNT);
+    sample(count, 250e3, samples);
+    for (i = 0; i < count; i++) {
+        total += samples[i];
+    }
+    return (float) total / count;
+}
+
+/* Check that the AGC logic can set the resistance properly. */
 static void agc_test(void)
 {
+    float low, mid, high, low_r, mid_r, high_r;
     printf("AGC\n");
     failed = false;
 
-    /* Not a lot to see from out here, but check that nothing crashes,
-     * and it gives us something to look for on the oscilloscope. */
     agc_reset();
-    sleep_ms(1000);
-    agc_set_level(120);
-    sleep_ms(50);
-    agc_set_level(121);
-    sleep_ms(50);
-    agc_set_level(120);
+
+    /* Set to a low resistance and measure the voltage across it.
+     * The total resistance is this fraction of the 10k potentiometer,
+     * plus a fixed 680R, plus wiring.  Pick a number near the bottom
+     * but not *at* the bottom so the error in 680R doesn't ruin our sums. */
+    agc_set_level(16);
+    low_r = 680.0 + 1e4 * 16.0 / 127.0;
+    low = average_sample();
+
+    /* Measure again in mid-range. */
+    agc_set_level(63);
+    mid_r = 680.0 + 1e4 * 63.0 / 127.0;
+    mid = average_sample();
+
+    /* Measure again at the highest resistance. */
+    agc_set_level(127);
+    high_r = 680.0 + 1e4;
+    high = average_sample();
+
+    printf("Low %f, mid %f, high %f\n", low, mid, high);
+
+    /* Increasing resistance with constant current should increase voltage. */
+    ASSERT(low < mid);
+    ASSERT(mid < high);
+
+    /* In the middle of the range, the increase should be linear-ish. */
+    if (low > 100 && mid < 3500) {
+        float prediction = mid * low_r / mid_r;
+        printf("Predicted mid->low %f (actual %f)\n", prediction, low);
+        ASSERT(fabsf((prediction - low) / prediction) < 0.1);
+    } else {
+        printf("No mid->low prediction: out of range.\n");
+    }
+    if (mid > 100 && high < 3500) {
+        float prediction = high * mid_r / high_r;
+        printf("Predicted high->mid %f (actual %f)\n", prediction, mid);
+        ASSERT(fabsf((prediction - mid) / prediction) < 0.1);
+    } else {
+        printf("No high->mid prediction: out of range.\n");
+    }
 
     printf("AGC: %s\n", failed ? "FAILED" : "OK");
 }
@@ -172,7 +218,7 @@ int main(void)
     /* Hardware setup. */
     gpio_init(PICO_DEFAULT_LED_PIN);
     gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
-    sample_init(SAMPLE_PIN);
+    sample_init(PT_PIN);
     agc_init(AD5220_DIR_PIN, AD5220_CLOCK_PIN);
 
     while(1) {
