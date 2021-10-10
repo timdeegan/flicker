@@ -162,22 +162,21 @@ static void agc_test(void)
 
     agc_reset();
 
-    /* Set to a low resistance and measure the voltage across it.
-     * The total resistance is this fraction of the 10k potentiometer,
-     * plus a fixed 680R, plus wiring.  Pick a number near the bottom
-     * but not *at* the bottom so the error in 680R doesn't ruin our sums. */
+    /* Set to a low resistance and measure the voltage across it.  Pick a
+     * number near the bottom but not *at* the bottom so the error in
+     * FIXED_OHMS doesn't ruin our sums. */
     agc_set_level(16);
-    low_r = 680.0 + 1e4 * 16.0 / 127.0;
+    low_r = AGC_OHMS(16);
     low = average_sample();
 
     /* Measure again in mid-range. */
     agc_set_level(63);
-    mid_r = 680.0 + 1e4 * 63.0 / 127.0;
+    mid_r = AGC_OHMS(63);
     mid = average_sample();
 
     /* Measure again at the highest resistance. */
     agc_set_level(127);
-    high_r = 680.0 + 1e4;
+    high_r = AGC_OHMS(127);
     high = average_sample();
 
     printf("Low %f, mid %f, high %f\n", low, mid, high);
