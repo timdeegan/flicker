@@ -8,6 +8,7 @@
 #include "pico/stdlib.h"
 #include "pico/binary_info.h"
 
+#include "agc.h"
 #include "assertions.h"
 #include "dsp.h"
 #include "fft.h"
@@ -95,8 +96,14 @@ static bool measure(void)
     float frequency;
     unsigned int cycle, mod;
 
+    /* Set the gain so we'll fill the ADC range. */
+    agc_run(samples);
+
     /* Collect uint16_t samples in [0, 0xfff]. */
     sample(SAMPLE_COUNT, SAMPLE_RATE, samples);
+
+    /* Put the AGC back in a known safe state. */
+    agc_reset();
 
     /* Find the spectrum and the peak frequency. */
     if (!window(samples, f.real, f.imag, SAMPLE_COUNT)) {
@@ -138,10 +145,11 @@ int main(void)
     gpio_init(PICO_DEFAULT_LED_PIN);
     gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
     sample_init(PT_PIN);
+    agc_init(AD5220_DIR_PIN, AD5220_CLOCK_PIN);
 
     while (1) {
         /* TODO: wait for a button press? */
-        sleep_ms(1000);
+        sleep_ms(2000);
         measure();
     }
 }
