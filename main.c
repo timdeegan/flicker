@@ -42,6 +42,18 @@ static inline float to_frequency(float bucket)
     return HZ_PER_BUCKET * bucket;
 }
 
+/* FFT bucket above which we ignore things because
+ * of noise.  Ideally we could go all the way to
+ * FREQ_COUNT, but in practice we get a lot of noise
+ * below that.  I can see noise at 130kHz on the 3V3 line
+ * wich ought to show up in our samples aliased at 120kHz;
+ * in our FFTs we see noise centred at about 90kHz too.
+ * For now, limit to 1/4 the sample freq (i.e. 62.5kHz).
+ * It would be nice to make some hardware improvements
+ * here because I know the phototransistor can pick up
+ * 3% flicker at 75kHz. */
+ #define FREQ_LIMIT (FREQ_COUNT / 2)
+
 /* Raw 12-bit samples from the ADC. */
 static uint16_t samples[SAMPLE_COUNT];
 
@@ -66,9 +78,9 @@ void assertion_failure(const char *pred, const char *file, int line)
 {
     while (true) {
         printf("ASSERTION FAILED at %s line %d: %s\n", file, line, pred);
-        gpio_put(PICO_DEFAULT_LED_PIN, 1);
+        gpio_put(LED_PIN, 1);
         sleep_ms(10);
-        gpio_put(PICO_DEFAULT_LED_PIN, 0);
+        gpio_put(LED_PIN, 0);
         sleep_ms(990);
     }
 }
@@ -111,11 +123,13 @@ static bool measure(void)
     }
     fft(f.real, f.imag, SAMPLE_COUNT);
     make_polar(f.real, f.imag, f.magnitude, f.phase, FREQ_COUNT);
-    frequency = to_frequency(peak(f.magnitude, FREQ_COUNT));
+    frequency = to_frequency(peak(f.magnitude, FREQ_LIMIT));
 
     /* Look at the spectrum. */
-    graph_logx(f.magnitude, FREQ_COUNT);
+    graph_logx(f.magnitude, FREQ_LIMIT);
     printf("FFT: peak at %fHz\n", frequency);
+    printf("FFT: peak magnitude %f\n",
+        f.magnitude[to_bucket(frequency)]);
 
     /* Look at a couple of cycles of the raw samples. */
     cycle = SAMPLE_RATE / frequency;
@@ -141,11 +155,22 @@ int main(void)
     /* Debugging output will go to the USB console. */
     stdio_init_all();
 
-    /* Hardware setup. */
-    gpio_init(PICO_DEFAULT_LED_PIN);
-    gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
+    /* Set up the LED in case we need to signal with it. */
+    gpio_init(LED_PIN);
+    gpio_set_dir(LED_PIN, GPIO_OUT);
+    gpio_put(LED_PIN, 1);
+
+    /* Put the power supply in PWM mode.  This should be less
+     * efficient but less noisy.  (Pico datasheet section 4.4) */
+    gpio_init(SMPS_PIN);
+    gpio_set_dir(SMPS_PIN, GPIO_OUT);
+    gpio_put(SMPS_PIN, 1);
+
+    /* Set up our collection machinery. */
     sample_init(PT_PIN);
     agc_init(AD5220_DIR_PIN, AD5220_CLOCK_PIN);
+
+    gpio_put(LED_PIN, 0);
 
     while (1) {
         /* TODO: wait for a button press? */
