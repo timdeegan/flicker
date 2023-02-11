@@ -4,9 +4,9 @@
  * The pin numbers on the Pico board are given in the comments. */
 
 /* AD5220 digital potentiometer. */
-#define AD5220_DIR_PIN 15 /* Pico 20 */
+#define AD5220_DIR_PIN 14 /* Pico 19 */
 bi_decl(bi_1pin_with_name(AD5220_DIR_PIN, "AD5220 up/down"));
-#define AD5220_CLOCK_PIN 14 /* Pico 19 */
+#define AD5220_CLOCK_PIN 15 /* Pico 20 */
 bi_decl(bi_1pin_with_name(AD5220_CLOCK_PIN, "AD5220 clock"));
 
 /* Osram SFH300 phototransistor. */
