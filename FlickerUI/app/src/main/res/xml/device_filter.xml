@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 2E8A/000A is the Pi Pico SDK's UART interface -->
+    <usb-device vendor-id="0x2e8a" product-id="0x000a" />
+</resources>
