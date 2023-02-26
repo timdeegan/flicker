@@ -2,16 +2,19 @@
 ; It moves by one step on every falling edge of the clock line.
 ; The clock can be up to 20MHz square (25ns low, 25ns high),
 ; and the direction pin must change >=10ns before clock edge.
-; The Pico's system clock is 125MHz (8ns/cycle); we won't
-; mess around with dividers because we want a clean clock.
+; The Pico's system clock is 125MHz (8ns/cycle) so in theory
+; we could clock at 15.6MHz (8 PIO cycles per clock) but in
+; practice 3.9MHz (32 PIO cycles per clock) is more reliable.
+; That's about 33us for the longest transaction, which is fine.
 
 .program ad5220
 .side_set 1
-  out pins, 1  side 1     ; Load direction pin; 2 cycles until clock falls.
-  out x, 7     side 1     ; Load repeats.
+  out pins, 1  side 1      ; Load direction pin; 16 cycles until clock falls.
+  out x, 7     side 1      ; Load repeats.
+  nop          side 1 [13]
 loop:
-  nop          side 0 [3] ; Set clock low; 4 cycles until clock rises.
-  nop          side 1 [2] ; Set clock high; 4 cycles until clock falls.
+  nop          side 0 [15] ; Set clock low; 16 cycles until clock rises.
+  nop          side 1 [14] ; Set clock high; 16 cycles until clock falls.
   jmp x-- loop side 1     ; Repeat clock pattern another @repeats times.
 
 % c-sdk {
