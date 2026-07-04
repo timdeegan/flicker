@@ -19,9 +19,13 @@ The 3D model for the case is in [case/case.3mf](case/case.3mf).  I printed mine 
 ![The flicker meter in its case](case/case.jpg)
 
 ## Firmware
-The firmware that runs on the Pico is in the [firmware](firmware/) directory.  You will need the [Raspberry Pi Pico SDK](https://github.com/raspberrypi/pico-sdk) to build it.
+The firmware that runs on the Pico is in [firmware/flicker-v1.0.uf2](firmware/flicker-v1.0.uf2).
 
-Once you have the SDK installed, you should be able to build the firmware with `cmake -S . -B build`.  To load it onto the board, connect the board by USB while holding the BOOTSEL button, which makes it appear as a USB-attached drive. Copy the .uf2 file to that drive.
+### Installing the firmware
+First connect the board by USB while holding the BOOTSEL button, which makes it appear as a USB-attached drive.  Then copy the .uf2 file to that drive.
+
+### Building your own firmware
+The firmware source is in the [firmware](firmware) directory.  If you want to build it yourself, you will need the [Raspberry Pi Pico SDK](https://github.com/raspberrypi/pico-sdk).  Once you have the SDK installed, you should be able to build the firmware using the Visual Studio Code extension as documented in the SDK.
 
 ## How to use
 The flicker meter appears as a USB serial device.
@@ -33,11 +37,6 @@ Point the sensor at the light you want to measure.  It's usualy best to get quit
 E.g. measuring a CFL lightbulb:
 
 ```
-Raw samples: 19ms, 12% flicker.
-AGC round 0: peak 3918, 127 -> 12
-AGC round 1: peak 3066, 12 -> 10
-AGC round 2: peak 805, 10 -> 57
-AGC round 3: peak 2453, 57 -> 66
 AGC: 66/127
 --------------------------------------------------------------------------------
                   *
@@ -92,10 +91,6 @@ The important numbers there are `10% flicker` (the amount by which the brightnes
 
 By contrast, a mobile phone screen using PWM for brightness control shows a faster but much deeper flicker:
 ```
-AGC round 0: peak 355, 127 -> 127
-AGC round 1: peak 355, 127 -> 127
-AGC round 2: peak 357, 127 -> 127
-AGC round 3: peak 353, 127 -> 127
 AGC: 127/127 (TOO DARK)
 --------------------------------------------------------------------------------
                           *

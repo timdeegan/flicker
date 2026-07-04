@@ -107,9 +107,6 @@ void agc_run(uint16_t *buffer)
             new_level = 127;
         }
 
-        printf("AGC round %d: peak %d, %d -> %d\n",
-            i, peak, cursor, new_level);
-
         agc_set_level(new_level);
     }
 

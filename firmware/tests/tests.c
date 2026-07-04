@@ -208,7 +208,7 @@ int main(void)
 {
     /* Debugging metadata that gets baked into the binary. */
     bi_decl(bi_program_name("unit-tests"));
-    bi_decl(bi_program_version_string("0.1"));
+    bi_decl(bi_program_version_string("1.0"));
     bi_decl(bi_program_description("Unit tests for flicker"));
 
     /* Debugging output will go to the USB console. */
